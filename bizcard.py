@@ -4,10 +4,10 @@ from streamlit_option_menu import option_menu
 import easyocr
 import mysql.connector as sql
 from PIL import Image
+import matplotlib.pyplot as plt
 import torch
 import cv2
 import os
-import matplotlib.pyplot as plt
 import re
 
 # SETTING PAGE CONFIGURATIONS
@@ -17,14 +17,14 @@ st.set_page_config(page_title="BizCardX: Extracting Business Card Data with OCR 
                    layout="wide",
                    initial_sidebar_state="expanded",
                    menu_items={'About': """# This OCR app is created by *Mukesh Babu!"""})
-st.markdown("<h1 style='text-align: center; color: blue;'>BizCardX: Extracting Business Card Data with OCR</h1>",
-            unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: blue;'>BizCardX: Extracting Business Card Data with OCR</h1>", unsafe_allow_html=True)
+
 
 
 # SETTING-UP BACKGROUND IMAGE
 def setting_bg():
     st.markdown(f""" <style>.stApp {{
-                        background:url("https://wallpapers.com/images/featured/plain-zoom-background-d3zz0xne0jlqiepg.jpg");
+                        background:url("https://wallpapers.com/images/high/color-background-8oe8gmvwzjw9tazx.webp");
                         background-size: cover}}
                      </style>""", unsafe_allow_html=True)
 
@@ -36,21 +36,17 @@ selected = option_menu(None, ["Home","Upload & Extract","Modify"],
                        icons=["house","cloud-upload","pencil-square"],
                        default_index=0,
                        orientation="horizontal",
-                       styles={"nav-link": {"font-size": "35px", "text-align": "centre", "margin": "-2px", "--hover-color": "#6495ED"},
+                       styles={"nav-link": {"font-size": "35px", "text-align": "centre", "margin": "-2px", "--hover-color": "#FFA500"},
                                "icon": {"font-size": "35px"},
                                "container" : {"max-width": "6000px"},
-                               "nav-link-selected": {"background-color": "#6495ED"}})
+                               "nav-link-selected": {"background-color": "#FFA500"}})
 
 # INITIALIZING THE EasyOCR READER
 reader = easyocr.Reader(['en'])
 
 # CONNECTING WITH MYSQL DATABASE
-mydb = sql.connect(host="localhost",
-                   user="root",
-                   password="your password",
-                   database="your database"
-                   )
-mycursor = mydb.cursor(buffered=True)
+mycon = sql.connect(host='localhost', user='root', password='12345',database='bizcard')
+mycursor = mycon.cursor(buffered=True)
 
 # TABLE CREATION
 mycursor.execute('''CREATE TABLE IF NOT EXISTS card_data
@@ -73,9 +69,9 @@ if selected == "Home":
     col1 , col2 = st.columns(2)
     with col1:
         st.image(Image.open("C:/Users/FCI/OneDrive/Desktop/New folder/bizcard/1.png"),width=500)
-        st.markdown("## :green[**Technologies Used :**] Python,easy OCR, Streamlit, SQL, Pandas")
+        st.markdown("## :black[**Technologies Used :**] Python,easy OCR, Streamlit, SQL, Pandas")
     with col2:
-       st.write("## :green[**About :**] Bizcard is a Python application designed to extract information from business cards.")
+       st.write("## :black[**About :**] Bizcard is a Python application designed to extract information from business cards.")
        st.write('## The main purpose of Bizcard is to automate the process of extracting key details from business card images, such as the name, designation, company, contact information, and other relevant data. By leveraging the power of OCR (Optical Character Recognition) provided by EasyOCR, Bizcard is able to extract text from the images.')
 
 # UPLOAD AND EXTRACT MENU
@@ -105,6 +101,7 @@ if selected == "Upload & Extract":
         save_card(uploaded_card)
 
         def image_preview(image, res):
+            fig, ax = plt.subplots()  # Create a figure and axis object
             for (bbox, text, prob) in res:
                 # unpack the bounding box
                 (tl, tr, br, bl) = bbox
@@ -115,9 +112,9 @@ if selected == "Upload & Extract":
                 cv2.rectangle(image, tl, br, (0, 255, 0), 2)
                 cv2.putText(image, text, (tl[0], tl[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-            plt.rcParams['figure.figsize'] = (15, 15)
-            plt.axis('off')
-            plt.imshow(image)
+            ax.axis('off')  # Use ax.axis() to turn off axis in Matplotlib
+            ax.imshow(image)
+            return fig 
 
 
         # DISPLAYING THE UPLOADED CARD
@@ -250,7 +247,7 @@ if selected == "Upload & Extract":
                          VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
                 mycursor.execute(sql, tuple(row))
                 # the connection is not auto committed by default, so we must commit to save our changes
-                mydb.commit()
+                mycon.commit()
                 st.success("#### Uploaded to database successfully!")
 
         if st.button(":blue[View updated data]"):
@@ -312,7 +309,7 @@ if selected == "Modify":
                     mycursor.execute("""UPDATE card_data SET company_name=%s,card_holder=%s,designation=%s,mobile_number=%s,email=%s,website=%s,area=%s,city=%s,state=%s,pin_code=%s
                                     WHERE card_holder=%s""", (company_name, card_holder, designation, mobile_number, email, website, area, city, state, pin_code,
                     selected_card))
-                    mydb.commit()
+                    mycon.commit()
                     st.success("Information updated in database successfully.")
 
             if st.button(":blue[View updated data]"):
@@ -344,7 +341,7 @@ if selected == "Modify":
                 st.write("#### Proceed to delete this card?")
                 if st.button("Yes Delete Business Card"):
                     mycursor.execute(f"DELETE FROM card_data WHERE card_holder='{selected_card}'")
-                    mydb.commit()
+                    mycon.commit()
                     st.success("Business card information deleted from database.")
 
             if st.button(":blue[View updated data]"):
